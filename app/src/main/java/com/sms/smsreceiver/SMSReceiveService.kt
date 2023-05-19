@@ -22,6 +22,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
@@ -116,64 +117,64 @@ class SMSReceiveService : Service(), CoroutineScope by CoroutineScope(Dispatcher
         isAlive: Boolean,
         isChangePhone: Boolean = false
     ) {
-        if (phone.isEmpty()) return
-        Log.d(TAG, "uploadStatus: ${this.isAlive.get()}")
-        if (this@SMSReceiveService.isAlive.get() == isAlive && !isChangePhone) return
-        this@SMSReceiveService.isAlive.set(isAlive)
-        withContext(Dispatchers.IO) {
-            Log.d(TAG, "isAlive:$isAlive ")
-            OkHttpClient().apply {
-                newCall(
-                    Request.Builder().url("http://47.108.223.87/index/upload_user_status")
-                        .post(
-                            RequestBody.create(
-                                MediaType.get("application/json"),
-                                gson.toJson(Status(phone, if (isAlive) 1 else 0))
-                            )
-                        ).build()
-                ).enqueue(object : Callback {
-                    override fun onFailure(call: Call, e: IOException) {
-                        Log.d(TAG, "uploadStatus onFailure: ${e.message}")
-                    }
-
-                    override fun onResponse(call: Call, response: Response) {
-                        Log.d(TAG, "uploadStatus onResponse: ${response.code()}")
-                    }
-
-                })
-            }
-        }
+//        if (phone.isEmpty()) return
+//        Log.d(TAG, "uploadStatus: ${this.isAlive.get()}")
+//        if (this@SMSReceiveService.isAlive.get() == isAlive && !isChangePhone) return
+//        this@SMSReceiveService.isAlive.set(isAlive)
+//        withContext(Dispatchers.IO) {
+//            Log.d(TAG, "isAlive:$isAlive ")
+//            OkHttpClient().apply {
+//                newCall(
+//                    Request.Builder().url("http://47.108.223.87/index/upload_user_status")
+//                        .post(
+//                            RequestBody.create(
+//                                MediaType.get("application/json"),
+//                                gson.toJson(Status(phone, if (isAlive) 1 else 0))
+//                            )
+//                        ).build()
+//                ).enqueue(object : Callback {
+//                    override fun onFailure(call: Call, e: IOException) {
+//                        Log.d(TAG, "uploadStatus onFailure: ${e.message}")
+//                    }
+//
+//                    override fun onResponse(call: Call, response: Response) {
+//                        Log.d(TAG, "uploadStatus onResponse: ${response.code()}")
+//                    }
+//
+//                })
+//            }
+//        }
     }
 
     private suspend fun uploadSMS(sms: SMS) {
-        withContext(Dispatchers.IO) {
-            uploadStatus(sms.phone, true)
-            Log.d(TAG, "uploadSMS: ")
-            OkHttpClient().apply {
-                newCall(
-                    Request.Builder().url("http://47.108.223.87/index/upload_user_info")
-                        .post(
-                            RequestBody.create(
-                                MediaType.get("application/json"),
-                                gson.toJson(sms)
-                            )
-                        )
-                        .build()
-                ).enqueue(object : Callback {
-                    override fun onFailure(call: Call, e: IOException) {
-                        Log.d(TAG, "uploadSMS onFailure: ")
-                        smsLiveData.postValue(SMSStatus(sms.phone, sms.body, 500))
-                    }
-
-                    override fun onResponse(call: Call, response: Response) {
-                        Log.d(TAG, "uploadSMS onResponse: ${response.body()}")
-                        Log.d(TAG, "uploadSMS onResponse: ${response.code()}")
-                        smsLiveData.postValue(SMSStatus(sms.phone, sms.body, response.code()))
-                    }
-
-                })
-            }
-        }
+//        withContext(Dispatchers.IO) {
+//            uploadStatus(sms.phone, true)
+//            Log.d(TAG, "uploadSMS: ")
+//            OkHttpClient().apply {
+//                newCall(
+//                    Request.Builder().url("http://47.108.223.87/index/upload_user_info")
+//                        .post(
+//                            RequestBody.create(
+//                                MediaType.get("application/json"),
+//                                gson.toJson(sms)
+//                            )
+//                        )
+//                        .build()
+//                ).enqueue(object : Callback {
+//                    override fun onFailure(call: Call, e: IOException) {
+//                        Log.d(TAG, "uploadSMS onFailure: ")
+//                        smsLiveData.postValue(SMSStatus(sms.phone, sms.body, 500))
+//                    }
+//
+//                    override fun onResponse(call: Call, response: Response) {
+//                        Log.d(TAG, "uploadSMS onResponse: ${response.body()}")
+//                        Log.d(TAG, "uploadSMS onResponse: ${response.code()}")
+                        smsLiveData.postValue(SMSStatus(sms.phone, sms.body, 200))
+//                    }
+//
+//                })
+//            }
+//        }
     }
 
     override fun onBind(intent: Intent?): IBinder {

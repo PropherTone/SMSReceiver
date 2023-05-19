@@ -2,6 +2,7 @@ package com.sms.smsreceiver
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.ActivityManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -22,6 +23,7 @@ import com.sms.smsreceiver.databinding.ActivityServiceBinding
 import com.sms.smsreceiver.databinding.InputViewBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 
