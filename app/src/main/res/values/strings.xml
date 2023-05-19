@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">SMSReceiver</string>
+    <string name="sms_title">短信内容:</string>
+    <string name="phone_title">手机号:</string>
+    <string name="upload_title">上传状态:</string>
+    <string name="enter_phone_number">输入手机号</string>
+    <string name="phone_number_title">手机号码:</string>
+    <string name="change_phone_number_btn">修改手机号</string>
+</resources>
