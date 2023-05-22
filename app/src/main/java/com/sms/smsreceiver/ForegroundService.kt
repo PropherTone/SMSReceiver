@@ -18,11 +18,11 @@ class ForegroundService : Service() {
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(
             NotificationChannel(
-                "OCR",
-                "OcrService",
+                "SMS",
+                "SMSService",
                 NotificationManager.IMPORTANCE_LOW
             )
         )
-        startForeground(1, NotificationCompat.Builder(this, "OCR").build())
+        startForeground(1, NotificationCompat.Builder(this, "SMS").build())
     }
 }

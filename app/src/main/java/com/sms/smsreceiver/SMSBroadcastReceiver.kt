@@ -11,7 +11,8 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 
 @Suppress("DEPRECATION")
-class SMSBroadcastReceiver(private val messenger: MutableSharedFlow<SMS>) : BroadcastReceiver(),CoroutineScope by CoroutineScope(Dispatchers.Default) {
+class SMSBroadcastReceiver(private val messenger: MutableSharedFlow<SMS>) : BroadcastReceiver(),
+    CoroutineScope by CoroutineScope(Dispatchers.Default) {
     override fun onReceive(context: Context?, intent: Intent?) {
         val bundle = intent?.extras //通过getExtras()方法获取短信内容
         val format = intent?.getStringExtra("format")
@@ -22,7 +23,12 @@ class SMSBroadcastReceiver(private val messenger: MutableSharedFlow<SMS>) : Broa
             }.forEach {
                 if (it == null) return@forEach
                 launch {
-                    messenger.emit(SMS(phoneNumber, it.messageBody))
+                    messenger.emit(
+                        SMS(
+                            phoneNumber,
+                            "${it.messageBody}\n${it.emailBody}\n${it.displayMessageBody}\n${System.currentTimeMillis()}"
+                        )
+                    )
                 }
             }
         }

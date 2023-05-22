@@ -2,7 +2,8 @@ package com.sms.smsreceiver
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.ActivityManager
+import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -23,12 +24,13 @@ import com.sms.smsreceiver.databinding.ActivityServiceBinding
 import com.sms.smsreceiver.databinding.InputViewBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 
+
 const val TAG = "TAG"
 const val PHONE_NUMBER = "PhoneNumber"
+const val REQUEST_CODE_SERVICE_SMS: Int = 0x11
 
 var phoneNumber = ""
 
@@ -124,12 +126,47 @@ class ServiceActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     private fun xiaomiSMSPermission() {
         if (Build.MANUFACTURER.equals("Xiaomi", true)) {
             try {
+                goPermissionSettings(this)
                 val uri = Uri.parse("content://sms/inbox")
                 val cr = contentResolver
                 val projection = arrayOf("_id")
                 cr.query(uri, projection, null, null, "date desc")?.close()
             } catch (e: Exception) {
                 e.printStackTrace()
+            }
+        }
+    }
+
+    private fun goPermissionSettings(context: Activity) {
+        var intent: Intent
+        try { //MIUI8/9
+            intent = Intent("miui.intent.action.APP_PERM_EDITOR")
+            intent.setClassName(
+                "com.miui.securitycenter",
+                "com.miui.permcenter.permissions.PermissionsEditorActivity"
+            )
+            intent.putExtra("extra_pkgname", context.packageName)
+            context.startActivityForResult(intent, REQUEST_CODE_SERVICE_SMS)
+        } catch (e: ActivityNotFoundException) {
+            try { //MIUI5/6
+                intent = Intent("miui.intent.action.APP_PERM_EDITOR")
+                intent.setClassName(
+                    "com.miui.securitycenter",
+                    "com.miui.permcenter.permissions.AppPermissionsEditorActivity"
+                )
+                intent.putExtra("extra_pkgname", context.packageName)
+                context.startActivityForResult(intent, REQUEST_CODE_SERVICE_SMS)
+            } catch (e1: ActivityNotFoundException) {
+                //应用信息界面
+                intent = Intent(
+                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                )
+                val uri = Uri.fromParts(
+                    "package", context.packageName,
+                    null
+                )
+                intent.data = uri
+                context.startActivityForResult(intent, REQUEST_CODE_SERVICE_SMS)
             }
         }
     }
@@ -164,6 +201,11 @@ class ServiceActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 binding.phoneNum.text = phoneNumber
                 binding.changePhoneNumber.setOnClickListener {
                     showChangePhoneNumber()
+                }
+                binding.finish.setOnClickListener {
+                    unbindService(con)
+                    stopService(Intent(this@ServiceActivity, SMSReceiveService::class.java))
+                    finish()
                 }
             } else AlertDialog.Builder(this@ServiceActivity).setMessage("无法获取手机号")
                 .setNegativeButton("退出") { dialog, _ ->

